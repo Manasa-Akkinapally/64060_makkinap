@@ -1,0 +1,65 @@
+
+title: "FML assignment"
+author: "Manasa Akkinapally"
+date: "2023-09-10"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+
+#Manasa Akkinapally 
+#Kent ID : 811286356
+#FML Assignment 
+
+
+data("airquality")
+View(airquality)
+
+#mean
+mean(airquality$Temp)
+
+
+#median
+median(airquality$Temp)
+
+
+#mode
+mode<-function(x){
+  n<-table("airquality")
+  which.max(n)
+}
+mode(airquality$Temp)
+
+
+#range
+range(airquality$Temp)
+
+
+#standard deviation
+sd(airquality$Temp)
+
+
+#variance
+var(airquality$Temp)
+
+
+#summary
+summary(airquality)
+
+
+#histogram
+hist(airquality$Temp)
+
+
+#scatter plot
+x= airquality$Temp
+y= airquality$Wind
+plot(x,y,main = "temperature and wind",xlab = "value",ylab = "scale")
+
+```
+
+
+
