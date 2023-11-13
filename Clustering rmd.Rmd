@@ -1,0 +1,200 @@
+---
+title: "Assignment4-Clustering"
+author: "Manasa Akkinapally"
+date: "2023-11-12"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Loading the Required packages
+
+```{r}
+library(flexclust)
+library(cluster)
+library(tidyverse)
+library(factoextra) 
+library(FactoMineR)
+library(ggcorrplot)
+```
+
+## 1.Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on.
+
+
+
+### Loading the data
+
+```{r}
+pharma <- read.csv("C:\\Users\\navaneetha\\Downloads\\Pharmaceuticals.csv")
+
+head(pharma)
+```
+
+## Selecting now columns 3 through 11 and entering the data in variable Info 1
+
+```{r}
+
+pharma1 <- pharma[3:11]
+
+head(pharma1)
+
+summary(pharma1)
+```
+
+### The different weights allocated to each variable along the rows will be used to scale the data in pharma1 and the pharma updated dataframe. calculating the distance between data rows and visualizing the distance matrix using the get dist and fviz dist functions of the factoextra package
+
+```{r}
+norm_data <- scale(pharma1)
+row.names(norm_data) <- pharma[,1]
+distance <- get_dist(norm_data)
+corr <- cor(norm_data)
+fviz_nbclust(norm_data,kmeans,method = "silhouette")
+```
+
+### Make a correlation matrix and print it to see how important variables are correlated.
+
+```{r}
+corr <- cor(norm_data)
+ggcorrplot(corr, outline.color = "grey50", lab = TRUE, hc.order = TRUE, type = "full") 
+```
+
+*The Correlation Matrix shows that the ROA, ROE, Net Profit Margin, and Market Cap are all high*
+
+### Principal component analysis will be used to determine the relative importance of each of the key variables in the data collection. 
+
+
+    assuming the optimal cluster size is 5
+
+```{r}
+pca <- PCA(norm_data)
+var <- get_pca_var(pca)
+fviz_pca_var(pca, col.var="contrib",
+             gradient.cols = c("grey","green","violet","black","purple"),ggrepel = TRUE ) + labs( title = "PCA Variable Variance")
+```
+
+### We can deduce from PCA Variable Variance that ROA, ROE, Net Profit Margin, Market Cap, and Asset Turnover contribute more than 61% to the two PCA components/dimensions, using the elbow technique to determine the optimal customer base. Changeables
+
+```{r}
+
+set.seed(10)
+
+wss <- vector()
+for(i in 1:10) wss[i] <- sum(kmeans(norm_data,i)$withinss)
+fviz_nbclust(norm_data, kmeans, method = "wss")
+wss
+```
+
+*As anticipated, the optimal cluster is located at position five.*
+
+## figuring out the ideal cluster size.
+
+### Silhouette*
+
+```{r}
+fviz_nbclust(norm_data, kmeans, method = "silhouette")
+```
+This indicates that the ideal number of clusters is five. Forming five clusters with the k-means approach.
+
+```{r}
+set.seed(1)
+k5 <- kmeans(norm_data, centers = 5, nstart = 31) # k = 5, number of restarts = 31
+k5$centers 
+k5$size  
+fviz_cluster(k5, data = norm_data) 
+```
+
+#### Manhattan Distance in Kmeans Clustering.
+
+```{r}
+set.seed(15)
+k51 = kcca(norm_data, k=5, kccaFamily("kmedians"))
+k51
+```
+
+#### Using predict function.
+```{r}
+clusters_index <- predict(k51)
+dist(k51@centers)
+image(k51)
+points(norm_data, col=clusters_index, pch=19, cex=0.9)
+```
+
+## 2.Interpret the clusters with respect to the numerical variables used in forming the clusters Using Kmeans method to calculate Mean.
+
+```{r}
+
+pharma1%>% mutate(Cluster = k5$cluster) %>% group_by(Cluster) %>% summarise_all("mean")
+
+clusplot(norm_data,k5$cluster, main="Clusters",color = TRUE, labels = 2,lines = 0)
+```
+
+*Companies are divided into the following distinct clusters*
+
+** Cluster 1: ELN, MRX, WPI and AVE+
+
+** Cluster 2: AGN and PHA+
+
+** Cluster 3: AHM,WYE,BMY,AZN, LLY, ABT, NVS and SGP+
+
+** Cluster 4: BAY, CHTT and IVX+
+
+** Cluster 5: JNJ, MRK, PFE and GSK+
+
+*The following can be obtained from the cluster variable means:*
+
+** With the fastest sales growth, the lowest PE ratio, and the largest net profit margin, Cluster 1 leads the pack. It can be purchased or held in reserve.**
+ 
+** Cluster 2 has a very high PE ratio.**
+
+** The risk for Cluster 3 is medium.**
+
+** Cluster 4 Its extremely high risk, extremely high leverage, and weak Net Profit margin make it exceedingly dangerous to purchase, even with its great PE ratio. Revenue growth is likewise quite low.**
+
+** Strong market capitalization, return on investment, return on assets, return on asset turnover, and return on net profit margin characterize Cluster 5. A low price-to-earnings ratio suggests that the company is reasonably valued and can be purchased and held. An 18.5% increase in revenue is also advantageous.**
+
+### 2B Is there a pattern in the clusters with respect to the numerical variables (10 to 12)?
+
+   By comparing clusters to the variables, we can visualize patterns.
+
+```{r}
+Info_2 <- pharma[12:14] %>% mutate(Clusters=k5$cluster)
+ggplot(Info_2, mapping = aes(factor(Clusters), fill =Median_Recommendation))+geom_bar(position='dodge')+labs(x ='Clusters')
+ggplot(Info_2, mapping = aes(factor(Clusters),fill = Location))+geom_bar(position = 'dodge')+labs(x ='Clusters')
+ggplot(Info_2, mapping = aes(factor(Clusters),fill = Exchange))+geom_bar(position = 'dodge')+labs(x ='Clusters')
+```
+
+    The clustered variable, a trend can be observed in the median suggestions.
+
+    The most of the clusters/companies are listed on the NYSE and are based in the United States, but other than that, there doesn't appear to be any discernible pattern among the clusters, locations, or exchanges.
+
+## 3. Provide an appropriate name for each cluster using any or all of the variables in the data set.
+
+    To Name for the clusters, Here I have consider Market_Cap, Beta, PE_Ratio, ROE,	ROA, Asset_Turnover. and based on that I have defined the Clusters
+
+
+*Cluster 1: Profitable Giants*
+
+  + Significant market capitalization, low beta, low PE ratio, strong ROE, ROA, and asset turnover are indicative of this. These organizations stand in for strong, successful giants in the industry.+
+
+*Cluster 2: High Beta, High Risk Players*
+
+  + Cluster 2 denotes businesses with higher risk levels and is identified by heightened Beta and PE Ratio. Due to potential overvaluation and increasing market sensitivity, investors should proceed with caution.+
+
+*Cluster 3: Balanced Performers*
+
+  + Cluster 3 represents businesses in a moderate-risk category by balancing Market Cap, Beta, and PE Ratio. These well-balanced performers show promise and stability.+
+  
+*Cluster 4: High Risk, Low Efficiency* 
+
+  + Entities in Cluster 4 suffer very high risk despite having a great PE Ratio; low efficiency is demonstrated by low ROE, ROA, and asset turnover. This cluster is thought to be less effective and high-risk.+
+
+*Cluster 5: Efficient Powerhouses*
+
+  + Cluster 5 presents companies with a modestly valued PE Ratio along with strong efficiency measures, such as high ROE, ROA, and asset turnover. These effective workhorses are desirable for acquisition as well as retention.+
+
